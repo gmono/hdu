@@ -48,65 +48,58 @@ bool h[205][205];
 
 int searchsum = 0;//分支搜索计数器
 
-//由dfs函数循环化而来
-bool whiledfs(int pa,int pb,int pc)
-{
+
     struct state
     {
         int pa;
         int pb;
         int pc;
         bool isused; //记录父状态是否已经处理过
-        state *parent; //子状态保存父状态结构的指针
-        bool cstate[2]; //父状态中保存子状态结果的数组
-        int parci; //此状态其父状态中的分支的位置
     };
-	//state *tstack = new state[100000];
-	state tstack[10000];
+state tstack[100000];
+//由dfs函数循环化而来
+bool whiledfs(int pa,int pb,int pc)
+{
 	int sptr = 0;//栈底
 #define push(a) tstack[++sptr]=a
 #define pop() sptr--
 #define top() tstack[sptr]
 #define empty() sptr==0
-    state result={-1,-1,-1,true,NULL,{false,false},0}; //保存最终返回结果
-    state root={pa,pb,pc,false,&result,{false,false},0};//根状态
+    state root={pa,pb,pc,false};//根状态
 	push(root);
 
     while(!empty())
     {
-		searchsum++;
+		
 		state &nowp = top();
-        if(nowp.pa>lena) {nowp.parent->cstate[nowp.parci]=false;pop();continue;}
-        if(nowp.pb>lenb) {nowp.parent->cstate[nowp.parci]=false;pop();continue;}
+        if(nowp.pa>lena) {pop();continue;}
+        if(nowp.pb>lenb) {pop();continue;}
 		if (nowp.pc == lenc) {return true; }
+        if(h[nowp.pa][nowp.pb]) {pop();continue;}
         if(!nowp.isused)
         {
+            searchsum++;
+            h[nowp.pa][nowp.pb]=true;
             nowp.isused=true;
             //这里校验分支有效性 如果无效则无需放入 对应cstate为false
-            if(a[nowp.pa]==c[nowp.pc])
-            {
-                //state left= { nowp.pa + 1,nowp.pb,nowp.pc + 1,false,&nowp,{ false,false },0 };
-				tstack[++sptr]={ nowp.pa + 1,nowp.pb,nowp.pc + 1,false,&nowp,{ false,false },0 };
-            }
+
             if(b[nowp.pb]==c[nowp.pc])
             {
                 //state right={nowp.pa,nowp.pb+1,nowp.pc+1,false,&nowp,{false,false},1};
-				tstack[++sptr] = { nowp.pa,nowp.pb + 1,nowp.pc + 1,false,&nowp,{ false,false },1 };
+				tstack[++sptr] = { nowp.pa,nowp.pb + 1,nowp.pc + 1,false};
             }
+            if(a[nowp.pa]==c[nowp.pc])
+            {
+                //state left= { nowp.pa + 1,nowp.pb,nowp.pc + 1,false,&nowp,{ false,false },0 };
+				tstack[++sptr]={ nowp.pa + 1,nowp.pb,nowp.pc + 1,false };
+            }
+
             
         }
         else
         {
-            //子分支处理过 此时处理本节点
-            //有任何一个分支可以则说明可行
-			if (nowp.cstate[0] || nowp.cstate[1])
-				return true;
             pop();
         }
-    }
-    if(result.cstate[0]||result.cstate[1])
-    {
-        return true;
     }
     return false;
 }
@@ -132,7 +125,7 @@ bool dfs(int pa,int pb,int pc)
 bool dfs2(int pa,int pb,int pc)
 {
 
-    //原始对比测试 证明dfs2等价于dfs
+    //原始对比测试 证明dfs2不等价于dfs
     if(pc==lenc)return true;
     if(pa>lena)return false; 
     if(pb>lenb)return false;
@@ -235,6 +228,7 @@ int len2=strlen(buf2);
 
 }
 #include "MyTimer_win.h"
+constexpr bool isdisplay=false;
 int main()
 {
     char *buf1=new char[210];
@@ -242,38 +236,57 @@ int main()
     char *buf3=new char[420];
     int fatsum=0;
 	MyTimer timer;
-    for(int i=0;i<10000;++i)
+    long long ss1=0;
+    long long ss2=0;
+    double ti1;
+    double ti2;
+    for(int i=0;i<100000;++i)
     {
         create(buf1,rand()%100);
         create(buf2,rand()%100);
         mix2(buf1,buf2,buf3);
+
         //mycode
         // bool isok=mycode(buf1,buf2,buf3);
         // bool isok=taotao(buf1,buf2,buf3,&dfs2); //此测试证明此搜索无需记忆 以及边界判断的精妙之处
 		timer.start();
         bool isok=taotao(buf1,buf2,buf3,&whiledfs); //状态转换模型改写递归结构测试
 		timer.stop();
-        printf("Mycode time:%d\t",timer.ticks());
-		printf("SearchSum=%d\n", searchsum);
-		timer.start();
-        bool isok2=taotao(buf1,buf2,buf3,&dfs2);
-		timer.stop();
-        printf("Raw time:%d\t",timer.ticks());
-		printf("SearchSum=%d\n", searchsum);
-printf("Mycode :%s Taotao: %s \n\n",isok? "True":"False",isok2? "True":"False");
-        if(isok!=isok2)
+        ss1+=searchsum;
+        ti1+=timer.ticks();
+        if(isdisplay)
         {
-            
-            printf("Fail \n\n");
-                    printf("Data One: %s\n\n Data Two: %s \n\n des: %s \n\n",buf1,buf2,buf3);
-        
-            fatsum++;
+            printf("Mycode time:%d\t",timer.ticks());
+		    printf("SearchSum=%d\n", searchsum);
         }
-        else printf("OK\n\n");
+
+		timer.start();
+        bool isok2=taotao(buf1,buf2,buf3,&dfs);
+		timer.stop();
+        ss2+=searchsum;
+        ti2+=timer.ticks();
+        if(isdisplay)
+        {
+            printf("Raw time:%d\t",timer.ticks());
+            printf("SearchSum=%d\n", searchsum);
+            printf("Mycode :%s Taotao: %s \n\n",isok? "True":"False",isok2? "True":"False");
+
+            
+            if(isok!=isok2)
+            {
+                
+                printf("Fail \n\n");
+                        printf("Data One: %s\n\n Data Two: %s \n\n des: %s \n\n",buf1,buf2,buf3);
+            
+                fatsum++;
+            }
+            else printf("OK\n\n");
+        }
     }
 
-    if(fatsum==0) printf("All is Ok");
-    else printf("Fail %d",fatsum);
-
+    if(fatsum==0) printf("All is Ok\n");
+    else printf("Fail %d\n",fatsum);
+    printf("Mycode 1:%lld\nDFS 2:%lld\n",ss1,ss2);
+    printf("Mycode Time 1:%lf\nDFS Time 2:%lf\n",ti1,ti2);
     for(;;);
 }
